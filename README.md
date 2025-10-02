@@ -17,7 +17,7 @@ Add the plugin to your project's `build.gradle.kts`:
 
 ```kotlin
 plugins {
-    id("org.qlub.auto-translate") version "1.0.6"
+    id("org.qlub.auto-translate") version "1.0.0"
 }
 ```
 
