@@ -5,19 +5,19 @@ plugins {
 }
 
 group = "org.qlub"
-version = "1.0.7"
+version = "1.0.0"
 
 gradlePlugin {
-    website.set("https://github.com/batuhangoktepe/qlub-auto-translate")
-    vcsUrl.set("https://github.com/batuhangoktepe/qlub-auto-translate.git")
+    website.set("https://github.com/clubpay/qlub-auto-translate-android")
+    vcsUrl.set("https://github.com/clubpay/qlub-auto-translate-android.git")
 
     plugins {
         create("auto-translate") {
             id = "org.qlub.auto-translate"
             implementationClass = "org.qlub.QlubAutoTranslatePlugin"
-            displayName = "Qlub Auto Translate Plugin"
-            description = "Qlub Auto Translate Gradle Plugin"
-            tags.set(listOf("translation", "automation", "json", "android"))
+            displayName = "Qlub Auto Translate"
+            description = "Gradle plugin for automatic Android string resource translation using AI. Detects missing translations and uses OpenAI API for context-aware, high-quality localization."
+            tags.set(listOf("translation", "automation", "android", "localization", "i18n", "openai", "ai"))
         }
     }
 }
