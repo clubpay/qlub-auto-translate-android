@@ -17,7 +17,7 @@ Add the plugin to your project's `build.gradle.kts`:
 
 ```kotlin
 plugins {
-    id("org.qlub.auto-translate") version "1.0.0"
+    id("io.github.clubpay.auto-translate") version "1.0.0"
 }
 ```
 

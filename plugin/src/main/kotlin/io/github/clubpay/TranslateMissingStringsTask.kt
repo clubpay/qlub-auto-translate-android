@@ -1,4 +1,4 @@
-package org.qlub
+package io.github.clubpay
 
 import org.gradle.api.GradleException
 import org.gradle.api.DefaultTask

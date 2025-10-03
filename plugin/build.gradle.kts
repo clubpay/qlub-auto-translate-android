@@ -4,7 +4,7 @@ plugins {
     id("com.gradle.plugin-publish") version "1.2.1"
 }
 
-group = "org.qlub"
+group = "io.github.clubpay"
 version = "1.0.0"
 
 gradlePlugin {
@@ -13,8 +13,8 @@ gradlePlugin {
 
     plugins {
         create("auto-translate") {
-            id = "org.qlub.auto-translate"
-            implementationClass = "org.qlub.QlubAutoTranslatePlugin"
+            id = "io.github.clubpay.auto-translate"
+            implementationClass = "io.github.clubpay.QlubAutoTranslatePlugin"
             displayName = "Qlub Auto Translate"
             description = "Gradle plugin for automatic Android string resource translation using AI. Detects missing translations and uses OpenAI API for context-aware, high-quality localization."
             tags.set(listOf("translation", "automation", "android", "localization", "i18n", "openai", "ai"))

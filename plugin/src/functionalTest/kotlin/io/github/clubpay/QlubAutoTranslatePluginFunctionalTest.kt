@@ -1,4 +1,4 @@
-package org.qlub
+package io.github.clubpay
 
 import java.io.File
 import kotlin.test.assertTrue
@@ -18,7 +18,7 @@ class QlubAutoTranslatePluginFunctionalTest {
         settingsFile.writeText("")
         buildFile.writeText("""
             plugins {
-                id('org.qlub.auto-translate')
+                id('io.github.clubpay.auto-translate')
             }
         """.trimIndent())
 
@@ -36,7 +36,7 @@ class QlubAutoTranslatePluginFunctionalTest {
         settingsFile.writeText("")
         buildFile.writeText("""
             plugins {
-                id('org.qlub.auto-translate')
+                id('io.github.clubpay.auto-translate')
             }
         """.trimIndent())
 
