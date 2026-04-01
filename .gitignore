@@ -7,6 +7,10 @@ build
 # Ignore local configuration files
 local.properties
 
+# Ignore IDE files
+.idea/
+
 # Ignore compiled artifacts
 *.jar
+!gradle/wrapper/gradle-wrapper.jar
 *.class

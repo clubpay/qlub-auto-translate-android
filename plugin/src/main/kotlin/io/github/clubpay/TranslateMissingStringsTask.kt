@@ -2,17 +2,41 @@ package io.github.clubpay
 
 import org.gradle.api.GradleException
 import org.gradle.api.DefaultTask
-import org.gradle.api.tasks.TaskAction
+import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.provider.Property
+import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Internal
+import org.gradle.api.tasks.Optional
+import org.gradle.api.tasks.TaskAction
 import java.io.File
 import javax.xml.parsers.DocumentBuilderFactory
 import org.w3c.dom.Element
 import com.google.gson.Gson
 
-open class TranslateMissingStringsTask : DefaultTask() {
-    
-    @Internal
-    var extension: QlubAutoTranslateExtension? = null
+abstract class TranslateMissingStringsTask : DefaultTask() {
+
+    @get:Internal
+    abstract val apiKey: Property<String>
+
+    @get:Input
+    abstract val appContext: Property<String>
+
+    @get:Input
+    abstract val verbose: Property<Boolean>
+
+    @get:Input
+    abstract val model: Property<String>
+
+    @get:Internal
+    abstract val projectDir: DirectoryProperty
+
+    @get:Input
+    @get:Optional
+    abstract val langs: Property<String>
+
+    @get:Input
+    @get:Optional
+    abstract val lang: Property<String>
     
     private companion object {
         const val BATCH_SIZE = 50
@@ -43,7 +67,7 @@ open class TranslateMissingStringsTask : DefaultTask() {
     }
     
     private fun log(message: String, level: LogLevel = LogLevel.INFO) {
-        val isVerbose = extension?.verbose?.get() == true
+        val isVerbose = verbose.get()
         when (level) {
             LogLevel.INFO -> println(message)
             LogLevel.VERBOSE -> if (isVerbose) println(message)
@@ -117,7 +141,7 @@ open class TranslateMissingStringsTask : DefaultTask() {
             val gson = Gson()
             @Suppress("UNCHECKED_CAST")
             (gson.fromJson(jsonString, Map::class.java) as Map<String, Any?>)
-                .keys.map { it as String }
+                .keys.map { it.toString() }
         } catch (_: Exception) { emptyList() }
     }
     
@@ -152,15 +176,15 @@ open class TranslateMissingStringsTask : DefaultTask() {
     
     @TaskAction
     fun translateMissingStrings() {
-        translateMissingStringsLogic(project)
+        translateMissingStringsLogic()
     }
-    
-    private fun translateMissingStringsLogic(rootProject: org.gradle.api.Project) {
+
+    private fun translateMissingStringsLogic() {
         log("\n> Task :app:translateMissingStrings")
         log("\nAutomated batch translation of missing strings...")
 
-        val langsProp = (rootProject.findProperty("langs") as String?)
-        val singleLangProp = (rootProject.findProperty("lang") as String?)
+        val langsProp = langs.orNull
+        val singleLangProp = lang.orNull
         val targetLanguages = when {
             !langsProp.isNullOrBlank() -> langsProp.split(",", ";").map { it.trim() }.filter { it.isNotEmpty() }.toSet()
             !singleLangProp.isNullOrBlank() -> setOf(singleLangProp.trim())
@@ -169,8 +193,8 @@ open class TranslateMissingStringsTask : DefaultTask() {
 
         log("Target languages: ${targetLanguages.joinToString(", ")}")
 
-        val apiKey = extension?.apiKey?.get() ?: ""
-        if (apiKey.isBlank()) {
+        val apiKeyValue = this.apiKey.get()
+        if (apiKeyValue.isBlank()) {
             throw GradleException("AI_API_KEY not configured in qlubAutoTranslate extension. Please add: qlubAutoTranslate { apiKey = \"your_openai_api_key\" }")
         }
 
@@ -194,7 +218,7 @@ open class TranslateMissingStringsTask : DefaultTask() {
         }
 
         log("Discovering modules with resources...", LogLevel.VERBOSE)
-        discoverModules(rootProject.projectDir)
+        discoverModules(projectDir.asFile.get())
         log("Found ${moduleResDirs.size} modules with res directories")
 
         val payload = buildTranslationPayload(targetLanguages.toList(), moduleResDirs)
@@ -227,7 +251,7 @@ open class TranslateMissingStringsTask : DefaultTask() {
             batches.forEachIndexed { batchIndex, batchMap ->
                 val batchJson = gson.toJson(mapOf(lang to batchMap))
                 log("[$lang] → Sending batch ${batchIndex + 1}/${batches.size} with ${batchMap.size} keys")
-                val responseJson = batchTranslateText(batchJson, apiKey)
+                val responseJson = batchTranslateText(batchJson, apiKeyValue)
 
                 val resp = parseJson<Map<String, Map<String, String>>>(
                     responseJson,
@@ -458,17 +482,17 @@ open class TranslateMissingStringsTask : DefaultTask() {
         - If you see & this character always change with &amp;
         """.trimIndent()
 
-        val appContext = extension?.appContext?.get() ?: "A mobile application"
-        val isVerboseMode = extension?.verbose?.get() == true
-        val model = extension?.model?.get() ?: "gpt-5-nano"
-        
-        log("Using AI model: $model")
+        val appContextValue = this.appContext.get()
+        val isVerboseMode = verbose.get()
+        val modelValue = this.model.get()
+
+        log("Using AI model: $modelValue")
         
         val userPrompt = """
         Translate the following Android app strings to $langHints.
 
         App context:
-        $appContext
+        $appContextValue
 
         Tone and Style Guide:
         - Translations must be natural and fluent, as if written by a native speaker for a modern mobile app.
@@ -507,7 +531,7 @@ open class TranslateMissingStringsTask : DefaultTask() {
         val gson = Gson()
         val requestBody = gson.toJson(
             mapOf(
-                "model" to model,
+                "model" to modelValue,
                 "messages" to listOf(
                     mapOf("role" to "system", "content" to systemRules),
                     mapOf("role" to "user", "content" to userPrompt)
@@ -532,14 +556,14 @@ open class TranslateMissingStringsTask : DefaultTask() {
         var addedCount = 0
         var modulesTouched = 0
 
-        moduleResDirs.toSortedMap().forEach { (module, resDir) ->
+        moduleResDirs.toSortedMap().forEach moduleLoop@{ (module, resDir) ->
             val valuesDir = File(resDir, "values")
             val defaultFile = File(valuesDir, "strings.xml")
-            if (!defaultFile.exists()) return@forEach
+            if (!defaultFile.exists()) return@moduleLoop
 
             val defaultKeys = parseStringKeys(defaultFile).toSet()
 
-            translations.forEach { (lang, langMap) ->
+            translations.forEach langLoop@{ (lang, langMap) ->
                 val targetDir = File(resDir, "values-$lang")
                 val targetFile = File(targetDir, "strings.xml")
 
@@ -557,7 +581,7 @@ open class TranslateMissingStringsTask : DefaultTask() {
 
                 if (candidateKeys.isEmpty()) {
                     log("[$module][$lang] ✓ no new keys to add", LogLevel.VERBOSE)
-                    return@forEach
+                    return@langLoop
                 }
 
                 log("[$module][$lang] adding ${candidateKeys.size} translations")
