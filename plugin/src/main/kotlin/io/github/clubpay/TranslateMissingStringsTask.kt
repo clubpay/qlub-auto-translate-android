@@ -3,6 +3,7 @@ package io.github.clubpay
 import org.gradle.api.GradleException
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Internal
@@ -37,6 +38,9 @@ abstract class TranslateMissingStringsTask : DefaultTask() {
     @get:Input
     @get:Optional
     abstract val lang: Property<String>
+
+    @get:Input
+    abstract val targetLanguages: ListProperty<String>
     
     private companion object {
         const val BATCH_SIZE = 50
@@ -66,6 +70,21 @@ abstract class TranslateMissingStringsTask : DefaultTask() {
         ERROR
     }
     
+    private fun resolveApiKey(): String {
+        val extensionKey = apiKey.get()
+        if (extensionKey.isNotBlank()) return extensionKey
+
+        val localPropsFile = File(projectDir.asFile.get(), "local.properties")
+        if (localPropsFile.exists()) {
+            val props = java.util.Properties()
+            localPropsFile.inputStream().use { props.load(it) }
+            val localKey = props.getProperty("OPENAI_API_KEY", "")
+            if (localKey.isNotBlank()) return localKey
+        }
+
+        return System.getenv("OPENAI_API_KEY") ?: ""
+    }
+
     private fun log(message: String, level: LogLevel = LogLevel.INFO) {
         val isVerbose = verbose.get()
         when (level) {
@@ -185,17 +204,19 @@ abstract class TranslateMissingStringsTask : DefaultTask() {
 
         val langsProp = langs.orNull
         val singleLangProp = lang.orNull
-        val targetLanguages = when {
+        val extensionLangs = targetLanguages.get()
+        val resolvedLanguages = when {
             !langsProp.isNullOrBlank() -> langsProp.split(",", ";").map { it.trim() }.filter { it.isNotEmpty() }.toSet()
             !singleLangProp.isNullOrBlank() -> setOf(singleLangProp.trim())
-            else -> throw GradleException("Missing required parameter. Usage: -Plangs=tr,de,fr or -Plang=de")
+            extensionLangs.isNotEmpty() -> extensionLangs.toSet()
+            else -> throw GradleException("Missing required parameter. Configure targetLanguages in extension or use -Plangs=tr,de,fr or -Plang=de")
         }
 
-        log("Target languages: ${targetLanguages.joinToString(", ")}")
+        log("Target languages: ${resolvedLanguages.joinToString(", ")}")
 
-        val apiKeyValue = this.apiKey.get()
+        val apiKeyValue = resolveApiKey()
         if (apiKeyValue.isBlank()) {
-            throw GradleException("AI_API_KEY not configured in qlubAutoTranslate extension. Please add: qlubAutoTranslate { apiKey = \"your_openai_api_key\" }")
+            throw GradleException("OpenAI API key not found. Set it in: 1) qlubAutoTranslate { apiKey = \"...\" } 2) local.properties: OPENAI_API_KEY=... 3) Environment variable: OPENAI_API_KEY")
         }
 
         val moduleResDirs = mutableMapOf<String, File>()
@@ -221,7 +242,7 @@ abstract class TranslateMissingStringsTask : DefaultTask() {
         discoverModules(projectDir.asFile.get())
         log("Found ${moduleResDirs.size} modules with res directories")
 
-        val payload = buildTranslationPayload(targetLanguages.toList(), moduleResDirs)
+        val payload = buildTranslationPayload(resolvedLanguages.toList(), moduleResDirs)
 
         if (payload.isEmpty()) {
             log("\nNo missing translations detected for requested languages. Nothing to translate.")
