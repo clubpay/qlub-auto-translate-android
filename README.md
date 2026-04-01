@@ -4,12 +4,15 @@ A Gradle plugin that automatically translates missing Android string resources u
 
 ## Features
 
-- 🌍 Automatically detects missing translations across all modules
-- 🤖 Uses OpenAI API for high-quality, context-aware translations
-- 📦 Processes translations in batches for efficiency
-- 🎯 Preserves placeholders, HTML tags, and special characters
-- 🔧 Supports multiple languages simultaneously
-- 📊 Detailed logging with optional verbose mode
+- Automatically detects missing translations across all modules
+- Uses OpenAI API for high-quality, context-aware translations
+- Processes translations in batches for efficiency
+- Preserves placeholders, HTML tags, and special characters
+- Supports multiple languages simultaneously
+- Auto-runs on release builds (optional)
+- Reads API key from `local.properties` or environment variable
+- Gradle Configuration Cache compatible
+- Detailed logging with optional verbose mode
 
 ## Installation
 
@@ -17,7 +20,7 @@ Add the plugin to your project's `build.gradle.kts`:
 
 ```kotlin
 plugins {
-    id("io.github.clubpay.auto-translate") version "1.0.0"
+    id("io.github.clubpay.auto-translate") version "1.2.1"
 }
 ```
 
@@ -27,7 +30,6 @@ Configure the plugin in your `build.gradle.kts`:
 
 ```kotlin
 qlubAutoTranslate {
-    apiKey = "your_openai_api_key"
     appContext = """
         Your app description here.
         This helps the AI provide more accurate, context-aware translations.
@@ -37,19 +39,54 @@ qlubAutoTranslate {
 }
 ```
 
+## API Key Setup
+
+The plugin looks for the OpenAI API key in this order:
+
+1. **`local.properties`** (recommended) - add to your project root:
+   ```properties
+   OPENAI_API_KEY=sk-your-api-key
+   ```
+2. **Environment variable**:
+   ```bash
+   export OPENAI_API_KEY=sk-your-api-key
+   ```
+3. **Extension** (not recommended - avoid committing secrets):
+   ```kotlin
+   qlubAutoTranslate {
+       apiKey = "sk-your-api-key"
+   }
+   ```
+
+> **Note:** `local.properties` is already in `.gitignore` in standard Android projects, so your API key stays safe.
+
 ## Usage
 
 ### Translate to Multiple Languages
 
 ```bash
-./gradlew qlubAutoTranslate -Plangs=tr,de,fr,es
+./gradlew :app:qlubAutoTranslate -Plangs=tr,de,fr,es
 ```
 
 ### Translate to Single Language
 
 ```bash
-./gradlew qlubAutoTranslate -Plang=tr
+./gradlew :app:qlubAutoTranslate -Plang=tr
 ```
+
+### Auto-translate on Release Builds
+
+Configure target languages and enable auto-run:
+
+```kotlin
+qlubAutoTranslate {
+    targetLanguages = listOf("ar", "zh-rHK", "tr")
+    runOnReleaseBuild = true
+    appContext = "Your app description"
+}
+```
+
+When enabled, the plugin automatically runs before any release build (`assembleXxxRelease`, `bundleXxxRelease`). If no translations are missing, it skips silently with no API cost.
 
 ## How It Works
 
@@ -79,11 +116,11 @@ Total missing keys to translate: 45
 
 Translating in batches of 50 keys per language...
 [tr] 1 batch(es) to translate (max 50 per batch)
-[tr] → Sending batch 1/1 with 45 keys
+[tr] -> Sending batch 1/1 with 45 keys
 Using AI model: gpt-5-nano
 
 ============================================================
-✅ Batch translation applied
+Batch translation applied
 Modules touched: 2
 Total translations added: 45
 ============================================================
@@ -103,4 +140,3 @@ Open source project by [Qlub](https://qlub.io)
 ## Contributing
 
 Contributions are welcome! Feel free to open issues or submit pull requests.
-

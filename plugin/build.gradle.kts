@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "io.github.clubpay"
-version = "1.2.0"
+version = "1.2.1"
 
 gradlePlugin {
     website.set("https://github.com/clubpay/qlub-auto-translate-android")

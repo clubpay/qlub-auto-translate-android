@@ -74,12 +74,16 @@ abstract class TranslateMissingStringsTask : DefaultTask() {
         val extensionKey = apiKey.get()
         if (extensionKey.isNotBlank()) return extensionKey
 
-        val localPropsFile = File(projectDir.asFile.get(), "local.properties")
-        if (localPropsFile.exists()) {
-            val props = java.util.Properties()
-            localPropsFile.inputStream().use { props.load(it) }
-            val localKey = props.getProperty("OPENAI_API_KEY", "")
-            if (localKey.isNotBlank()) return localKey
+        var dir: File? = projectDir.asFile.get()
+        while (dir != null) {
+            val localPropsFile = File(dir, "local.properties")
+            if (localPropsFile.exists()) {
+                val props = java.util.Properties()
+                localPropsFile.inputStream().use { props.load(it) }
+                val localKey = props.getProperty("OPENAI_API_KEY", "")
+                if (localKey.isNotBlank()) return localKey
+            }
+            dir = dir.parentFile
         }
 
         return System.getenv("OPENAI_API_KEY") ?: ""
