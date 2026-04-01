@@ -13,7 +13,7 @@ class QlubAutoTranslatePlugin: Plugin<Project> {
             verbose.set(extension.verbose)
             model.set(extension.model)
             targetLanguages.set(extension.targetLanguages)
-            projectDir.set(project.layout.projectDirectory)
+            projectDir.set(project.rootProject.layout.projectDirectory)
             langs.set(project.providers.gradleProperty("langs"))
             lang.set(project.providers.gradleProperty("lang"))
         }
